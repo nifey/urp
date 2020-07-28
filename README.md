@@ -54,16 +54,23 @@ Eg: the function abc' + d + b'd' can be written as
 
 ## Available commands
 * r 3
+
 reads the function 3 from 3.pcn
 * p 3
+
 writes the function 3 (in memory) to 3.pcn
 * \+ 6 3 2
+
 Performs Logical OR, 6 = 3 OR 2
 * & 6 3 2
+
 Performs Logical AND, 6 = 3 AND 2
 * ! 6 3
+
 Performs Logical Not, 6 = NOT 3
 * t 6
+
 Prints whether function 6 is a tautology
 * q
+
 quits the program
