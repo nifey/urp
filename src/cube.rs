@@ -13,7 +13,7 @@ pub enum Literal {
 
 /// Cube represents a product term and can contain a number of variables
 /// It is vector of Literals and stores the status of each variable in the product term
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub struct Cube(Vec<Literal>);
 
 impl Cube {
@@ -56,7 +56,28 @@ impl Cube {
 
     /// Returns the complement of the Cube as a CubeList
     pub fn complement(&self) -> CubeList {
-        unimplemented!();
+        let mut cubelist = CubeList::new();
+        if *self != Cube::new(self.len()) {
+            for i in 0..self.0.len() {
+                if self.0[i] == Literal::Positive {
+                    cubelist.add_cube(Cube::get_var_cube(self.len(), i + 1, false));
+                } else if self.0[i] == Literal::Negative {
+                    cubelist.add_cube(Cube::get_var_cube(self.len(), i + 1, true));
+                }
+            }
+        }
+        cubelist
+    }
+
+    /// Returns a cube that contains only one literal
+    pub fn get_var_cube(num_var: usize, var_num: usize, positive: bool) -> Self {
+        let mut cube = Cube::new(num_var);
+        if positive {
+            cube.set_literal(var_num, Literal::Positive);
+        } else {
+            cube.set_literal(var_num, Literal::Negative);
+        }
+        cube
     }
 
     /// Returns self AND cube_x
@@ -101,6 +122,26 @@ impl From<Vec<i32>> for Cube {
             }
         }
         cube
+    }
+}
+
+impl std::fmt::Display for Cube {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        let mut non_dont_care_count = 0;
+        for value in &self.0 {
+            if *value != Literal::Dontcare {
+                non_dont_care_count += 1;
+            }
+        }
+        write!(f, "{} ", non_dont_care_count);
+        for i in 0..self.0.len() {
+            if self.0[i] == Literal::Positive {
+                write!(f, "{} ", (i + 1));
+            } else if self.0[i] == Literal::Negative {
+                write!(f, "{} ", -((i + 1) as i32));
+            }
+        }
+        Ok(())
     }
 }
 
@@ -159,9 +200,10 @@ mod test {
         let cube_z = Cube::from(vec![1, 0, -1]);
         let cube_a = Cube::from(vec![-1, 0, 0]);
         let cube_b = Cube::from(vec![0, 0, 1]);
-        assert_eq!(cube_x.complement().len(), 2);
-        assert_eq!(cube_x.complement().contains_cube(&cube_a), true);
-        assert_eq!(cube_x.complement().contains_cube(&cube_b), true);
+        println!("{:?}", cube_z.complement());
+        assert_eq!(cube_z.complement().len(), 2);
+        assert_eq!(cube_z.complement().contains_cube(&cube_a), true);
+        assert_eq!(cube_z.complement().contains_cube(&cube_b), true);
     }
 
     #[test]
