@@ -56,7 +56,7 @@ impl Cube {
 
     /// Returns the complement of the Cube as a CubeList
     pub fn complement(&self) -> CubeList {
-        let mut cubelist = CubeList::new();
+        let mut cubelist = CubeList::new(self.0.len());
         if *self != Cube::new(self.len()) {
             for i in 0..self.0.len() {
                 if self.0[i] == Literal::Positive {

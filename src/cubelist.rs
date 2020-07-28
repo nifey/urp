@@ -6,8 +6,8 @@ use std::io::{BufRead, BufReader, Write};
 /// It is a vector of Cubes. Each Cube represents a product term and
 /// the function is obtained by summing (performing logical OR of) all
 /// the product terms
-#[derive(Debug)]
-pub struct CubeList(Vec<Cube>);
+#[derive(Debug, Clone)]
+pub struct CubeList(Vec<Cube>, usize);
 
 impl CubeList {
     /// This function returns the number of Cube or Product terms present
@@ -17,8 +17,8 @@ impl CubeList {
     }
 
     /// Returns an empty CubeList
-    pub fn new() -> Self {
-        CubeList(vec![])
+    pub fn new(num_var: usize) -> Self {
+        CubeList(vec![], num_var)
     }
 
     /// This function reads the cubelist from the PCN file
@@ -92,26 +92,118 @@ impl CubeList {
     /// This funcitons performs Logical AND of the boolean function
     /// with another boolean function represented as a CubeList
     pub fn and(&self, cubelist_x: &CubeList) -> CubeList {
-        unimplemented!();
+        let mut result = CubeList::new(self.1);
+        for cube_x in &self.0 {
+            for cube_y in &cubelist_x.0 {
+                if let Some(new_cube) = cube_x.and(cube_y) {
+                    if !result.contains_cube(&new_cube) {
+                        result.add_cube(new_cube);
+                    }
+                }
+            }
+        }
+        result
     }
 
     /// This funcitons performs Logical OR of the boolean function
     /// with another boolean function represented as a CubeList
     pub fn or(&self, cubelist_x: &CubeList) -> CubeList {
-        unimplemented!();
+        let mut result_cubelist: CubeList = self.clone();
+        for cube in &cubelist_x.0 {
+            if !result_cubelist.contains_cube(&cube) {
+                result_cubelist.add_cube(cube.clone());
+            }
+        }
+        result_cubelist
     }
 
     /// This funcitons returns the complement of the boolean function
     pub fn complement(&self) -> CubeList {
-        unimplemented!();
+        let mut cubelist = CubeList::new(self.1);
+        if self.len() == 0 {
+            cubelist.add_cube(Cube::from(vec![0; self.1]));
+            cubelist
+        } else if self.contains_cube(&Cube::from(vec![0; self.1])) {
+            cubelist
+        } else if self.len() == 1 {
+            self.0[0].complement()
+        } else {
+            let var_num = self.get_most_unate_var();
+            let (pos_cubelist, neg_cubelist) = self.cofactor(var_num);
+            let mut cubelist_x_pos = CubeList::new(self.1);
+            cubelist_x_pos.add_cube(Cube::get_var_cube(self.1, var_num, true));
+            let mut cubelist_x_neg = CubeList::new(self.1);
+            cubelist_x_neg.add_cube(Cube::get_var_cube(self.1, var_num, false));
+            (cubelist_x_pos.and(&pos_cubelist.complement()))
+                .or(&cubelist_x_neg.and(&neg_cubelist.complement()))
+        }
+    }
+
+    /// Returns a variable most suited to split on
+    pub fn get_most_unate_var(&self) -> usize {
+        let mut pos_count = vec![0; self.1];
+        let mut neg_count = vec![0; self.1];
+        for cube in &self.0 {
+            for i in 1..=self.1 {
+                if cube.get_literal(i).unwrap() == Literal::Positive {
+                    pos_count[i - 1] += 1;
+                } else if cube.get_literal(i).unwrap() == Literal::Negative {
+                    neg_count[i - 1] += 1;
+                }
+            }
+        }
+        let mut unate = true;
+        let mut max_var = 0;
+        let mut max_val = 0;
+        let mut more_than_one = false;
+        for i in 1..=self.1 {
+            if (pos_count[i - 1] == 0 || neg_count[i - 1] == 0) && unate {
+                if max_val < pos_count[i - 1] + neg_count[i - 1] {
+                    max_val = pos_count[i - 1] + neg_count[i - 1];
+                    max_var = i;
+                    more_than_one = false;
+                } else if max_val == pos_count[i - 1] + neg_count[i - 1] {
+                    more_than_one = true;
+                }
+            } else {
+                if unate {
+                    unate = false;
+                    max_val = pos_count[i - 1] + neg_count[i - 1];
+                    max_var = i;
+                    more_than_one = false;
+                } else {
+                    if max_val < pos_count[i - 1] + neg_count[i - 1] {
+                        max_val = pos_count[i - 1] + neg_count[i - 1];
+                        max_var = i;
+                    } else if max_val == pos_count[i - 1] + neg_count[i - 1] {
+                        more_than_one = true;
+                    }
+                }
+            }
+        }
+        if !more_than_one || unate {
+            max_var
+        } else {
+            let mut min_bal = std::u32::MAX;
+            let mut min_var = 0;
+            for i in 1..=self.1 {
+                if pos_count[i - 1] != 0 && neg_count[i - 1] != 0 {
+                    if min_bal > (pos_count[i - 1] as i32 - neg_count[i - 1] as i32).abs() as u32 {
+                        min_bal = (pos_count[i - 1] as i32 - neg_count[i - 1] as i32).abs() as u32;
+                        min_var = i;
+                    }
+                }
+            }
+            min_var
+        }
     }
 
     /// This function returns the Shannon Cofactor with respect to variable
     /// indicated by var_num. It returns both the positive and negative cofactor
     /// as a tuple
     pub fn cofactor(&self, var_num: usize) -> (CubeList, CubeList) {
-        let mut pos_cofactor = CubeList::new();
-        let mut neg_cofactor = CubeList::new();
+        let mut pos_cofactor = CubeList::new(self.1);
+        let mut neg_cofactor = CubeList::new(self.1);
         for cube in &self.0 {
             if cube.get_literal(var_num).unwrap() == Literal::Positive {
                 // Add the cube to positive cofactor
@@ -135,13 +227,38 @@ impl CubeList {
     /// This function returns a boolean value that indicates if the function
     /// represented by the CubeList is a tautology
     pub fn is_tautology(&self) -> bool {
-        unimplemented!();
+        if self.is_unate() {
+            if self.contains_cube(&Cube::from(vec![0; self.1])) {
+                true
+            } else {
+                false
+            }
+        } else {
+            let var_num = self.get_most_unate_var();
+            let (pos_cubelist, neg_cubelist) = self.cofactor(var_num);
+            pos_cubelist.is_tautology() && neg_cubelist.is_tautology()
+        }
     }
 
-    /// This function returns a boolean value that indicates if the function
-    /// represented by the CubeList is a unate function
+    /// This function returns if the function is unate
     pub fn is_unate(&self) -> bool {
-        unimplemented!();
+        let mut pos_count = vec![0; self.1];
+        let mut neg_count = vec![0; self.1];
+        for cube in &self.0 {
+            for i in 1..=self.1 {
+                if cube.get_literal(i).unwrap() == Literal::Positive {
+                    pos_count[i - 1] += 1;
+                } else if cube.get_literal(i).unwrap() == Literal::Negative {
+                    neg_count[i - 1] += 1;
+                }
+            }
+        }
+        for i in 1..=self.1 {
+            if pos_count[i - 1] != 0 && neg_count[i - 1] != 0 {
+                return false;
+            }
+        }
+        true
     }
 }
 
@@ -151,7 +268,7 @@ impl CubeList {
 ///
 impl From<Vec<Vec<i32>>> for CubeList {
     fn from(vector: Vec<Vec<i32>>) -> Self {
-        let mut cubelist = CubeList::new();
+        let mut cubelist = CubeList::new(vector[0].len());
         for i in 0..vector.len() {
             cubelist.add_cube(Cube::from(vector[i].clone()));
         }
@@ -201,18 +318,6 @@ mod test {
         );
         assert_eq!(neg_cubelist.contains_cube(&Cube::from(vec![0, 1, 1])), true);
     }
-
-    #[test]
-    fn and() {}
-
-    #[test]
-    fn or() {}
-
-    #[test]
-    fn complement() {}
-
-    #[test]
-    fn is_unate() {}
 
     #[test]
     fn is_tautology() {

@@ -48,6 +48,21 @@ fn handle_command(index: &mut HashMap<u32, CubeList>, line: String) -> bool {
                 cubelist_1.write_to_file(format!("{}.pcn", function).as_str());
             }
         }
+        't' => {
+            // Checks if a function is a tautology
+            if contents.len() < 2 {
+                println!("Expected 1 argument");
+                return true;
+            }
+            let function: u32 = contents[1].parse::<u32>().expect("Expected an number");
+            if let Some(cubelist_1) = index.get(&function) {
+                if cubelist_1.is_tautology() {
+                    println!("{} is a tautology", function);
+                } else {
+                    println!("{} is not a tautology", function);
+                }
+            }
+        }
         'r' => {
             // Reads the function from a file
             if contents.len() < 2 {
