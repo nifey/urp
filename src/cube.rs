@@ -17,6 +17,12 @@ pub enum Literal {
 pub struct Cube(Vec<Literal>);
 
 impl Cube {
+    /// Returns a new cube of length specified by num_var
+    /// All the variables are in Dontcare state when returned
+    pub fn new(num_var: usize) -> Self {
+        Cube(vec![Literal::Dontcare; num_var])
+    }
+
     /// Returns the length of the vector of Literal values
     pub fn len(&self) -> usize {
         self.0.len()
@@ -57,7 +63,7 @@ impl Cube {
     ///
     /// If result of AND operatin is 0, it returns None
     pub fn and(&self, cube_x: &Cube) -> Option<Cube> {
-        let mut result = new(self.len());
+        let mut result = Cube::new(self.len());
         for i in 1..=self.len() {
             if self.get_literal(i).unwrap() == Literal::Dontcare {
                 result.set_literal(i, cube_x.get_literal(i).unwrap());
@@ -84,7 +90,7 @@ impl Cube {
 /// ```
 impl From<Vec<i32>> for Cube {
     fn from(vector: Vec<i32>) -> Self {
-        let mut cube = new(vector.len());
+        let mut cube = Cube::new(vector.len());
         for i in 0..vector.len() {
             if vector[i] > 0 {
                 cube.set_literal(i + 1, Literal::Positive);
@@ -98,19 +104,13 @@ impl From<Vec<i32>> for Cube {
     }
 }
 
-/// Returns a new cube of length specified by num_var
-/// All the variables are in Dontcare state when returned
-pub fn new(num_var: usize) -> Cube {
-    Cube(vec![Literal::Dontcare; num_var])
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
 
     #[test]
     fn create_new_cube() {
-        let cube = new(3);
+        let cube = Cube::new(3);
         assert_eq!(cube.len(), 3);
         assert_eq!(cube.get_literal(1).unwrap(), Literal::Dontcare);
         assert_eq!(cube.get_literal(2).unwrap(), Literal::Dontcare);
@@ -121,7 +121,7 @@ mod test {
 
     #[test]
     fn set_variable() {
-        let mut cube = new(3);
+        let mut cube = Cube::new(3);
         cube.set_literal(2, Literal::Positive);
         assert_eq!(cube.get_literal(2).unwrap(), Literal::Positive);
     }
@@ -147,21 +147,21 @@ mod test {
     #[test]
     fn complement() {
         // Complement of 1 is 0 and so it returns an empty CubeList
-        assert_eq!(new(3).complement().len(), 0);
+        assert_eq!(Cube::new(3).complement().len(), 0);
 
         // Complement of a single variable
         let cube_x = Cube::from(vec![1, 0]);
         let cube_y = Cube::from(vec![-1, 0]);
         assert_eq!(cube_x.complement().len(), 1);
-        assert_eq!(cube_x.complement().contains(&cube_y), true);
+        assert_eq!(cube_x.complement().contains_cube(&cube_y), true);
 
         // Complement of a cube with multiple variables
         let cube_z = Cube::from(vec![1, 0, -1]);
         let cube_a = Cube::from(vec![-1, 0, 0]);
         let cube_b = Cube::from(vec![0, 0, 1]);
         assert_eq!(cube_x.complement().len(), 2);
-        assert_eq!(cube_x.complement().contains(&cube_a), true);
-        assert_eq!(cube_x.complement().contains(&cube_b), true);
+        assert_eq!(cube_x.complement().contains_cube(&cube_a), true);
+        assert_eq!(cube_x.complement().contains_cube(&cube_b), true);
     }
 
     #[test]
